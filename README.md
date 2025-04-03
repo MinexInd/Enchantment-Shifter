@@ -5,7 +5,7 @@ Hi there, Minecraft explorers! **Enchantment Shifter** is a small-scale mod for 
 - **Fair and Square**: The XP cost feels right—it’s based on vanilla anvil math, so it’s balanced but tweakable.
 - **Make It Your Own**: Want cheaper transfers? A flat XP rate? Or maybe a cap on how many enchantments move at once? Dive into the config file and set it up your way!
 - **Vanilla Vibes**: No new blocks, ores, or items—just plain old enchantment-switching goodness that slots right into Minecraft.
-- **Up to Date**: Crafted for Minecraft 1.20.1 on Fabric, ready for your next adventure.
+- **Up to Date**: Made for Minecraft Fabric Modloader, ready for your next adventure.
 - **Modpack Ready**: Throw this into any modpack you desire—just give a shoutout in the comments below!
 
 ## What It Does
