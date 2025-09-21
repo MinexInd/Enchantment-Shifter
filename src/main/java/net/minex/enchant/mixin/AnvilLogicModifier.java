@@ -1,6 +1,8 @@
 package net.minex.enchant.mixin;
 
 import net.minex.enchant.configs.EnchantmentShifterConfigs;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.ItemEnchantmentsComponent;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.EnchantedBookItem;
 import net.minecraft.item.ItemStack;
@@ -8,7 +10,7 @@ import net.minecraft.item.Items;
 import net.minecraft.enchantment.Enchantment;
 import net.minecraft.enchantment.EnchantmentLevelEntry;
 import net.minecraft.enchantment.EnchantmentHelper;
-import net.minecraft.nbt.NbtList;
+import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.screen.AnvilScreenHandler;
 import net.minecraft.screen.Property;
 import org.spongepowered.asm.mixin.Final;
@@ -30,7 +32,7 @@ public abstract class AnvilLogicModifier {
 	// 0: no transfer, 1: book transfer, 2: item-to-item transfer
 	private int transferType = 0;
 	private ItemStack modifiedSource = ItemStack.EMPTY;
-	private Set<Enchantment> transferredEnchantments = new HashSet<>();
+	private Set<RegistryEntry<Enchantment>> transferredEnchantments = new HashSet<>();
 
 	@ModifyVariable(at = @At("STORE"), method = "updateResult()V", ordinal = 1)
 	private ItemStack changeIS(ItemStack itemStack2) {
@@ -40,10 +42,11 @@ public abstract class AnvilLogicModifier {
 		ItemStack targetItem = (ItemStack) input[1]; // Slot 1: Target item or book
 
 		// Conditions for transfer types
-		boolean bookTransfer = !sourceItem.getEnchantments().isEmpty() &&
+		ItemEnchantmentsComponent sourceEnchants = sourceItem.getOrDefault(DataComponentTypes.ENCHANTMENTS, ItemEnchantmentsComponent.DEFAULT);
+		boolean bookTransfer = !sourceEnchants.isEmpty() &&
 				targetItem.isOf(Items.BOOK) &&
 				targetItem.getCount() == 1;
-		boolean itemToItemTransfer = !sourceItem.getEnchantments().isEmpty() &&
+		boolean itemToItemTransfer = !sourceEnchants.isEmpty() &&
 				!targetItem.isOf(Items.BOOK) &&
 				!targetItem.isOf(Items.ENCHANTED_BOOK);
 
@@ -56,28 +59,20 @@ public abstract class AnvilLogicModifier {
 			// Book Transfer Logic
 			this.transferType = 1;
 			this.modifiedSource = sourceItem.copy();
-			Map<Enchantment, Integer> enchantments = EnchantmentHelper.get(sourceItem);
 			ItemStack result = Items.ENCHANTED_BOOK.getDefaultStack();
-
-			if (EnchantmentShifterConfigs.limit == 0) {
-				EnchantmentHelper.set(enchantments, result);
-			} else {
-				NbtList nbtList = new NbtList();
-				int count = 0;
-				for (Map.Entry<Enchantment, Integer> entry : enchantments.entrySet()) {
-					if (count >= EnchantmentShifterConfigs.limit) break;
-					Enchantment enchantment = entry.getKey();
-					int level = entry.getValue();
-					nbtList.add(EnchantmentHelper.createNbt(EnchantmentHelper.getEnchantmentId(enchantment), level));
-					EnchantedBookItem.addEnchantment(result, new EnchantmentLevelEntry(enchantment, level));
-					count++;
-				}
-				if (!nbtList.isEmpty()) {
-					result.setSubNbt("StoredEnchantments", nbtList);
-				}
+			
+			ItemEnchantmentsComponent.Builder builder = new ItemEnchantmentsComponent.Builder(ItemEnchantmentsComponent.DEFAULT);
+			int count = 0;
+			
+			for (var entry : sourceEnchants.getEnchantmentEntries()) {
+				if (EnchantmentShifterConfigs.limit > 0 && count >= EnchantmentShifterConfigs.limit) break;
+				builder.add(entry.getKey(), entry.getIntValue());
+				count++;
 			}
+			
+			result.set(DataComponentTypes.STORED_ENCHANTMENTS, builder.build());
 
-			this.levelCost.set(Math.max((int) (enchantments.size() * EnchantmentShifterConfigs.costFactor), 1));
+			this.levelCost.set(Math.max((int) (sourceEnchants.getSize() * EnchantmentShifterConfigs.costFactor), 1));
 			if (EnchantmentShifterConfigs.fixedCost != 1000) {
 				this.levelCost.set(EnchantmentShifterConfigs.fixedCost);
 			}
@@ -85,59 +80,40 @@ public abstract class AnvilLogicModifier {
 
 		} else if (itemToItemTransfer) {
 			// Item-to-Item Transfer Logic
-			Map<Enchantment, Integer> sourceEnchants = EnchantmentHelper.get(sourceItem);
-			List<EnchantmentLevelEntry> transferable = new ArrayList<>();
+			ItemEnchantmentsComponent targetEnchants = targetItem.getOrDefault(DataComponentTypes.ENCHANTMENTS, ItemEnchantmentsComponent.DEFAULT);
+			ItemEnchantmentsComponent.Builder builder = new ItemEnchantmentsComponent.Builder(targetEnchants);
+			Set<RegistryEntry<Enchantment>> transferred = new HashSet<>();
+			int transferredCount = 0;
 
-			// Filter compatible enchantments
-			for (Map.Entry<Enchantment, Integer> entry : sourceEnchants.entrySet()) {
-				Enchantment ench = entry.getKey();
-				int level = entry.getValue();
-				if (ench.isAcceptableItem(targetItem)) {
-					transferable.add(new EnchantmentLevelEntry(ench, level));
-				}
-			}
-
-			// Apply limit if configured
-			if (EnchantmentShifterConfigs.limit > 0 && transferable.size() > EnchantmentShifterConfigs.limit) {
-				transferable = transferable.subList(0, EnchantmentShifterConfigs.limit);
-			}
-
-			// Combine with target item's enchantments
-			Map<Enchantment, Integer> targetEnchants = new HashMap<>(EnchantmentHelper.get(targetItem));
-			Set<Enchantment> transferred = new HashSet<>();
-
-			for (EnchantmentLevelEntry entry : transferable) {
-				Enchantment ench = entry.enchantment;
-				int level = entry.level;
-				boolean canApply = true;
-
-				// Check compatibility with existing enchantments
-				for (Enchantment existing : targetEnchants.keySet()) {
-					if (!existing.canCombine(ench)) {
-						canApply = false;
-						break;
-					}
-				}
-
-				if (canApply) {
-					transferred.add(ench);
-					if (targetEnchants.containsKey(ench)) {
-						int existingLevel = targetEnchants.get(ench);
+			// Transfer compatible enchantments
+			for (var entry : sourceEnchants.getEnchantmentEntries()) {
+				if (EnchantmentShifterConfigs.limit > 0 && transferredCount >= EnchantmentShifterConfigs.limit) break;
+				
+				RegistryEntry<Enchantment> enchantment = entry.getKey();
+				int level = entry.getIntValue();
+				
+				// Check if enchantment is acceptable for target item
+				if (enchantment.value().isAcceptableItem(targetItem)) {
+					transferred.add(enchantment);
+					int existingLevel = targetEnchants.getLevel(enchantment);
+					
+					if (existingLevel > 0) {
 						if (level > existingLevel) {
-							targetEnchants.put(ench, level);
-						} else if (level == existingLevel && level < ench.getMaxLevel()) {
-							targetEnchants.put(ench, level + 1);
+							builder.add(enchantment, level);
+						} else if (level == existingLevel && level < enchantment.value().getMaxLevel()) {
+							builder.add(enchantment, level + 1);
 						}
 					} else {
-						targetEnchants.put(ench, level);
+						builder.add(enchantment, level);
 					}
+					transferredCount++;
 				}
 			}
 
 			// Set result only if enchantments were transferred
 			if (!transferred.isEmpty()) {
 				ItemStack result = targetItem.copy();
-				EnchantmentHelper.set(targetEnchants, result);
+				result.set(DataComponentTypes.ENCHANTMENTS, builder.build());
 				this.transferredEnchantments = transferred;
 				this.transferType = 2;
 				this.modifiedSource = sourceItem.copy();
@@ -161,11 +137,12 @@ public abstract class AnvilLogicModifier {
 		ItemStack sourceItem = (ItemStack) input[0];
 		ItemStack targetItem = (ItemStack) input[1];
 
-		boolean defaultLogic = targetItem.isOf(Items.ENCHANTED_BOOK) &&
-				!EnchantedBookItem.getEnchantmentNbt(targetItem).isEmpty();
-		boolean bookTransfer = !sourceItem.getEnchantments().isEmpty() &&
-				targetItem.isOf(Items.BOOK);
-		boolean itemToItemTransfer = !sourceItem.getEnchantments().isEmpty() &&
+		ItemEnchantmentsComponent targetStoredEnchants = targetItem.getOrDefault(DataComponentTypes.STORED_ENCHANTMENTS, ItemEnchantmentsComponent.DEFAULT);
+		ItemEnchantmentsComponent sourceEnchants = sourceItem.getOrDefault(DataComponentTypes.ENCHANTMENTS, ItemEnchantmentsComponent.DEFAULT);
+		
+		boolean defaultLogic = targetItem.isOf(Items.ENCHANTED_BOOK) && !targetStoredEnchants.isEmpty();
+		boolean bookTransfer = !sourceEnchants.isEmpty() && targetItem.isOf(Items.BOOK);
+		boolean itemToItemTransfer = !sourceEnchants.isEmpty() &&
 				!targetItem.isOf(Items.BOOK) &&
 				!targetItem.isOf(Items.ENCHANTED_BOOK);
 
@@ -177,14 +154,19 @@ public abstract class AnvilLogicModifier {
 		if (this.transferType == 1 || this.transferType == 2) {
 			if (this.transferType == 1) {
 				// Book transfer: remove all enchantments
-				EnchantmentHelper.set(Map.of(), this.modifiedSource);
+				this.modifiedSource.set(DataComponentTypes.ENCHANTMENTS, ItemEnchantmentsComponent.DEFAULT);
 			} else if (this.transferType == 2) {
 				// Item-to-item transfer: remove only transferred enchantments
-				Map<Enchantment, Integer> sourceEnchants = EnchantmentHelper.get(this.modifiedSource);
-				for (Enchantment ench : this.transferredEnchantments) {
-					sourceEnchants.remove(ench);
+				ItemEnchantmentsComponent sourceEnchants = this.modifiedSource.getOrDefault(DataComponentTypes.ENCHANTMENTS, ItemEnchantmentsComponent.DEFAULT);
+				ItemEnchantmentsComponent.Builder builder = new ItemEnchantmentsComponent.Builder(ItemEnchantmentsComponent.DEFAULT);
+				
+				for (var entry : sourceEnchants.getEnchantmentEntries()) {
+					if (!this.transferredEnchantments.contains(entry.getKey())) {
+						builder.add(entry.getKey(), entry.getIntValue());
+					}
 				}
-				EnchantmentHelper.set(sourceEnchants, this.modifiedSource);
+				
+				this.modifiedSource.set(DataComponentTypes.ENCHANTMENTS, builder.build());
 			}
 
 			if (EnchantmentShifterConfigs.returnItem == 1) {
