@@ -1,30 +1,98 @@
-# Compiled class file
-*.class
+# Minecraft & Modding
+run/
+*.launch
+*.tmp
+*.cache
 
-# Log file
+# Gradle
+.gradle/
+build/
+out/
+gradle.properties
+!gradle.properties.example
+
+# Eclipse
+.classpath
+.project
+.settings/
+bin/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+*.scm
+*.orig
+
+# VS Code
+.vscode/
+
+# Mac OS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
+
+# Logs
 *.log
+logs/
 
-# BlueJ files
-*.ctxt
+# Temporary files
+*.tmp
+*.temp
 
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
+# User-specific files
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
 
-# Package Files #
-*.jar
-*.war
-*.nar
-*.ear
-*.zip
-*.tar.gz
-*.rar
+# Build results
+target/
+dist/
+out/
 
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+# Maven
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildnumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# Local configuration files (contains secrets)
+config/
+options.txt
+usercache.json
+usernamecache.json
+servers.dat
+*.json
+!src/**/resources/*.json
+!src/**/resources/**/*.json
+
+# IDE-specific files
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Crash logs
 hs_err_pid*
 replay_pid*
 
-run/
-.gradle/
-.idea/
-build/
-
+# Enchantment Shifter specific
+enchantment-transfer-config.properties
