@@ -20,12 +20,12 @@ public class EnchantmentShifterConfigs {
         assignConfigs();
     }
 
-    private static void createConfigs() {
-        configs.addKeyValuePair(new Pair("cost", 1000), "Here you can set a fixed value for any enchantment transfer from item to book. Leaving it default disables the fixed value.");
-        configs.addKeyValuePair(new Pair("factor", 1.0), "Here you can set a factor to multiply any enchantment transfer XP cost by. Default is 1.0.");
-        configs.addKeyValuePair(new Pair("limit", 0), "Here you can set an enchantment limit to only transfer X amount of enchantments from an item. Default is 0 which disables the limit.");
-        configs.addKeyValuePair(new Pair("return", 1), "Should the anvil give you back the item you disenchanted? Change this value to 0 to block the original item from being returned. Default is 1.");
-    }
+	private static void createConfigs() {
+		configs.addKeyValuePair(new Pair("cost", 1000), "Fixed XP cost for all transfers. Set to 1000 to use vanilla calculation. Default: 1000");
+		configs.addKeyValuePair(new Pair("factor", 1.0), "Multiplier for XP cost. 0.5 = half cost, 2.0 = double cost. Default: 1.0");
+		configs.addKeyValuePair(new Pair("limit", 0), "Max enchantments to transfer at once. 0 = no limit. Default: 0");
+		configs.addKeyValuePair(new Pair("return", 1), "Source item behavior: 0 = vanish, 1 = return with enchantments removed. Default: 1");
+	}
 
     private static void assignConfigs() {
         fixedCost = CONFIG.getOrDefault("cost", 1000);

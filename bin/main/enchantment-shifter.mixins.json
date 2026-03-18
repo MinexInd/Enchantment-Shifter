@@ -1,0 +1,13 @@
+{
+	"required": true,
+	"package": "net.minex.enchant.mixin",
+	"compatibilityLevel": "JAVA_17",
+	"mixins": [
+		"AnvilLogicModifier",
+		"AnvilTooExpensiveMixin"
+
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}
