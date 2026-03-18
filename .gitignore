@@ -1,98 +1,40 @@
-# Minecraft & Modding
-run/
-*.launch
-*.tmp
-*.cache
+# gradle
 
-# Gradle
 .gradle/
 build/
 out/
-gradle.properties
-!gradle.properties.example
+classes/
 
-# Eclipse
-.classpath
-.project
-.settings/
-bin/
+# eclipse
 
-# IntelliJ IDEA
+*.launch
+
+# idea
+
 .idea/
 *.iml
 *.ipr
 *.iws
-*.scm
-*.orig
 
-# VS Code
+# vscode
+
+.settings/
 .vscode/
+bin/
+.classpath
+.project
 
-# Mac OS
-.DS_Store
-.AppleDouble
-.LSOverride
-._*
-.Spotlight-V100
-.Trashes
+# macos
 
-# Windows
-Thumbs.db
-ehthumbs.db
-Desktop.ini
+*.DS_Store
 
-# Linux
-*~
+# fabric
 
-# Logs
-*.log
-logs/
+run/
 
-# Temporary files
-*.tmp
-*.temp
+# java
 
-# User-specific files
-*.suo
-*.user
-*.userosscache
-*.sln.docstates
-
-# Build results
-target/
-dist/
-out/
-
-# Maven
-pom.xml.tag
-pom.xml.releaseBackup
-pom.xml.versionsBackup
-pom.xml.next
-release.properties
-dependency-reduced-pom.xml
-buildnumber.properties
-.mvn/timing.properties
-.mvn/wrapper/maven-wrapper.jar
-
-# Local configuration files (contains secrets)
-config/
-options.txt
-usercache.json
-usernamecache.json
-servers.dat
-*.json
-!src/**/resources/*.json
-!src/**/resources/**/*.json
-
-# IDE-specific files
-*.suo
-*.user
-*.userosscache
-*.sln.docstates
-
-# Crash logs
-hs_err_pid*
-replay_pid*
-
-# Enchantment Shifter specific
-enchantment-transfer-config.properties
+hs_err_*.log
+replay_*.log
+*.hprof
+*.jfr
