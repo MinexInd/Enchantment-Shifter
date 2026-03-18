@@ -4,7 +4,6 @@ import net.minex.enchant.configs.EnchantmentShifterConfigs;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.component.type.ItemEnchantmentsComponent;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.EnchantedBookItem;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.enchantment.Enchantment;
@@ -76,6 +75,7 @@ public abstract class AnvilLogicModifier {
 			if (EnchantmentShifterConfigs.fixedCost != 1000) {
 				this.levelCost.set(EnchantmentShifterConfigs.fixedCost);
 			}
+			
 			return result;
 
 		} else if (itemToItemTransfer) {
@@ -121,7 +121,8 @@ public abstract class AnvilLogicModifier {
 				if (EnchantmentShifterConfigs.fixedCost != 1000) {
 					this.levelCost.set(EnchantmentShifterConfigs.fixedCost);
 				}
-				return result;
+				
+			return result;
 			}
 			return ItemStack.EMPTY;
 
@@ -149,7 +150,7 @@ public abstract class AnvilLogicModifier {
 		return bl || defaultLogic || bookTransfer || itemToItemTransfer;
 	}
 
-	@Inject(at = @At("TAIL"), method = "onTakeOutput")
+	@Inject(at = @At("HEAD"), method = "onTakeOutput")
 	private void setVanillaItem(PlayerEntity player, ItemStack stack, CallbackInfo ci) {
 		if (this.transferType == 1 || this.transferType == 2) {
 			if (this.transferType == 1) {
@@ -170,6 +171,11 @@ public abstract class AnvilLogicModifier {
 			}
 
 			if (EnchantmentShifterConfigs.returnItem == 1) {
+				// Clear the source item slot to prevent vanilla anvil from consuming it
+				Object[] input = ((AnvilScreenHandler) (Object) this).getStacks().toArray();
+				if (input.length > 0) {
+					((ItemStack) input[0]).setCount(0);
+				}
 				player.giveItemStack(this.modifiedSource);
 			}
 		}
