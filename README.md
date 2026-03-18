@@ -88,26 +88,6 @@ factor=0.5
 limit=0
 return=1
 ```
-*Half the XP cost, keep your items*
-
-**Challenge Mode:**
-```properties
-cost=30
-factor=2.0
-limit=3
-return=0
-```
-*Higher XP cost, limited enchantments, items are consumed*
-
-**Creative/Testing Mode:**
-```properties
-cost=1000
-factor=0.0
-limit=0
-return=1
-```
-*Free transfers! (Set factor to 0.0 for zero XP cost)*
-
 ## How to Use
 
 1. **Place an enchanted item** in the first anvil slot
