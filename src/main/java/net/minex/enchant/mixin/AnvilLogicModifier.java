@@ -16,6 +16,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.gen.Invoker;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.HashSet;
@@ -39,6 +40,11 @@ public abstract class AnvilLogicModifier {
 
 	@Shadow
 	private int repairItemUsage;
+
+	@Invoker("sendContentUpdates")
+	public void invokeSendContentUpdates() {
+		throw new UnsupportedOperationException();
+	}
 
 	// 0 = none, 1 = item to book, 2 = item to item
 	private int transferType = 0;
@@ -84,7 +90,7 @@ public abstract class AnvilLogicModifier {
 			}
 
 			this.output.setStack(0, result);
-			this.sendContentUpdates();
+			this.invokeSendContentUpdates();
 			ci.cancel();
 			return;
 		}
@@ -141,7 +147,7 @@ public abstract class AnvilLogicModifier {
 				}
 
 				this.output.setStack(0, result);
-				this.sendContentUpdates();
+				this.invokeSendContentUpdates();
 				ci.cancel();
 				return;
 			}
