@@ -37,10 +37,16 @@ public abstract class AnvilLogicModifier {
 	protected CraftingResultInventory output;
 
 	@Shadow
-	private boolean keepSecondSlot;
-
-	@Shadow
 	private int repairItemUsage;
+
+	private void setKeepSecondSlot(boolean v) {
+		try {
+			java.lang.reflect.Field f = AnvilScreenHandler.class.getDeclaredField("keepSecondSlot");
+			f.setAccessible(true);
+			f.set(this, v);
+		} catch (Exception ignored) {
+		}
+	}
 
 	// 0 = none, 1 = item to book, 2 = item to item
 	private int transferType = 0;
@@ -78,7 +84,7 @@ public abstract class AnvilLogicModifier {
 
 			this.transferType = 1;
 			this.modifiedSource = sourceItem.copy();
-			this.keepSecondSlot = false;
+			setKeepSecondSlot(false);
 			this.repairItemUsage = 0;
 			this.levelCost.set(Math.max((int) (sourceEnchants.getSize() * EnchantmentShifterConfigs.costFactor), 1));
 			if (EnchantmentShifterConfigs.fixedCost >= 0) {
@@ -135,7 +141,7 @@ public abstract class AnvilLogicModifier {
 				this.transferredEnchantments = transferred;
 				this.transferType = 2;
 				this.modifiedSource = sourceItem.copy();
-				this.keepSecondSlot = false;
+				setKeepSecondSlot(false);
 				this.repairItemUsage = 0;
 				this.levelCost.set(Math.max((int) (transferred.size() * EnchantmentShifterConfigs.costFactor), 1));
 				if (EnchantmentShifterConfigs.fixedCost >= 0) {
