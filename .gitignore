@@ -28,3 +28,7 @@ run/
 .idea/
 build/
 
+# logs
+client.log
+*.log
+
