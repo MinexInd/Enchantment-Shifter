@@ -5,8 +5,10 @@ import net.minecraft.component.DataComponentTypes;
 import net.minecraft.component.type.ItemEnchantmentsComponent;
 import net.minecraft.enchantment.Enchantment;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.inventory.CraftingResultInventory;
 import net.minecraft.inventory.Inventory;
 import net.minecraft.item.ItemStack;
+import net.minecraft.screen.ScreenHandler;
 import net.minecraft.item.Items;
 import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.screen.AnvilScreenHandler;
@@ -32,7 +34,7 @@ public abstract class AnvilLogicModifier {
 	protected Inventory input;
 
 	@Shadow
-	protected Inventory output;
+	protected CraftingResultInventory output;
 
 	@Shadow
 	private boolean keepSecondSlot;
@@ -84,7 +86,7 @@ public abstract class AnvilLogicModifier {
 			}
 
 			this.output.setStack(0, result);
-			this.sendContentUpdates();
+			((ScreenHandler)(Object)this).sendContentUpdates();
 			ci.cancel();
 			return;
 		}
@@ -141,7 +143,7 @@ public abstract class AnvilLogicModifier {
 				}
 
 				this.output.setStack(0, result);
-				this.sendContentUpdates();
+				((ScreenHandler)(Object)this).sendContentUpdates();
 				ci.cancel();
 				return;
 			}
