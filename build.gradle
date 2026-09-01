@@ -17,7 +17,8 @@ dependencies {
 	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
 
 	// Fabric API. This is technically optional, but you probably want it anyway.
-	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+	// Fabric API is optional for this mod - not needed for anvil logic
+	// implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}" // disabled for 26.2 due to IngredientMixin crash in 0.145.6+26.2
 }
 
 processResources {
