@@ -30,11 +30,13 @@ public abstract class AnvilLogicModifier {
 	@Final
 	private Property levelCost;
 
-	@Shadow
-	protected Inventory input;
+	private Inventory getInput() {
+		return ((ForgingAccessor)(Object)this).getInput();
+	}
 
-	@Shadow
-	protected CraftingResultInventory output;
+	private CraftingResultInventory getOutput() {
+		return ((ForgingAccessor)(Object)this).getOutput();
+	}
 
 	@Shadow
 	private int repairItemUsage;
@@ -55,8 +57,8 @@ public abstract class AnvilLogicModifier {
 
 	@Inject(method = "updateResult", at = @At("HEAD"), cancellable = true)
 	private void onUpdateResult(CallbackInfo ci) {
-		ItemStack sourceItem = this.input.getStack(0);
-		ItemStack targetItem = this.input.getStack(1);
+		ItemStack sourceItem = getInput().getStack(0);
+		ItemStack targetItem = getInput().getStack(1);
 
 		ItemEnchantmentsComponent sourceEnchants = sourceItem.getOrDefault(DataComponentTypes.ENCHANTMENTS, ItemEnchantmentsComponent.DEFAULT);
 		if (sourceEnchants.isEmpty()) {
@@ -91,7 +93,7 @@ public abstract class AnvilLogicModifier {
 				this.levelCost.set(EnchantmentShifterConfigs.fixedCost);
 			}
 
-			this.output.setStack(0, result);
+			getOutput().setStack(0, result);
 			((ScreenHandler)(Object)this).sendContentUpdates();
 			ci.cancel();
 			return;
@@ -148,7 +150,7 @@ public abstract class AnvilLogicModifier {
 					this.levelCost.set(EnchantmentShifterConfigs.fixedCost);
 				}
 
-				this.output.setStack(0, result);
+				getOutput().setStack(0, result);
 				((ScreenHandler)(Object)this).sendContentUpdates();
 				ci.cancel();
 				return;
@@ -173,7 +175,7 @@ public abstract class AnvilLogicModifier {
 			}
 
 			if (EnchantmentShifterConfigs.returnItem == 1) {
-				this.input.getStack(0).setCount(0);
+				getInput().getStack(0).setCount(0);
 				player.giveItemStack(this.modifiedSource);
 			}
 		}
