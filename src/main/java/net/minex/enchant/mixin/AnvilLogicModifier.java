@@ -1,18 +1,18 @@
 package net.minex.enchant.mixin;
 
 import net.minex.enchant.configs.EnchantmentShifterConfigs;
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.component.type.ItemEnchantmentsComponent;
-import net.minecraft.enchantment.Enchantment;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.inventory.CraftingResultInventory;
-import net.minecraft.inventory.Inventory;
-import net.minecraft.item.ItemStack;
-import net.minecraft.screen.ScreenHandler;
-import net.minecraft.item.Items;
-import net.minecraft.registry.entry.RegistryEntry;
-import net.minecraft.screen.AnvilScreenHandler;
-import net.minecraft.screen.Property;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.enchantment.ItemEnchantments;
+import net.minecraft.world.item.enchantment.Enchantment;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.ResultContainer;
+import net.minecraft.world.Container;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.item.Items;
+import net.minecraft.core.Holder;
+import net.minecraft.world.inventory.AnvilMenu;
+import net.minecraft.world.inventory.DataSlot;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -23,27 +23,27 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.util.HashSet;
 import java.util.Set;
 
-@Mixin(AnvilScreenHandler.class)
+@Mixin(AnvilMenu.class)
 public abstract class AnvilLogicModifier {
 
 	@Shadow
 	@Final
-	private Property levelCost;
+	private DataSlot cost;
 
-	private Inventory getInput() {
-		return ((ForgingAccessor)(Object)this).getInput();
+	private Container getInput() {
+		return ((ForgingAccessor)(Object)this).getInputSlots();
 	}
 
-	private CraftingResultInventory getOutput() {
-		return ((ForgingAccessor)(Object)this).getOutput();
+	private ResultContainer getOutput() {
+		return ((ForgingAccessor)(Object)this).getResultSlots();
 	}
 
 	@Shadow
-	private int repairItemUsage;
+	private int repairItemCountCost;
 
 	private void setKeepSecondSlot(boolean v) {
 		try {
-			java.lang.reflect.Field f = AnvilScreenHandler.class.getDeclaredField("keepSecondSlot");
+			java.lang.reflect.Field f = AnvilMenu.class.getDeclaredField("keepSecondSlot");
 			f.setAccessible(true);
 			f.set(this, v);
 		} catch (Exception ignored) {
@@ -53,69 +53,69 @@ public abstract class AnvilLogicModifier {
 	// 0 = none, 1 = item to book, 2 = item to item
 	private int transferType = 0;
 	private ItemStack modifiedSource = ItemStack.EMPTY;
-	private Set<RegistryEntry<Enchantment>> transferredEnchantments = new HashSet<>();
+	private Set<Holder<Enchantment>> transferredEnchantments = new HashSet<>();
 
-	@Inject(method = "updateResult", at = @At("HEAD"), cancellable = true)
+	@Inject(method = "createResult", at = @At("HEAD"), cancellable = true)
 	private void onUpdateResult(CallbackInfo ci) {
-		ItemStack sourceItem = getInput().getStack(0);
-		ItemStack targetItem = getInput().getStack(1);
+		ItemStack sourceItem = getInput().getItem(0);
+		ItemStack targetItem = getInput().getItem(1);
 
-		ItemEnchantmentsComponent sourceEnchants = sourceItem.getOrDefault(DataComponentTypes.ENCHANTMENTS, ItemEnchantmentsComponent.DEFAULT);
+		ItemEnchantments sourceEnchants = sourceItem.getOrDefault(DataComponents.ENCHANTMENTS, ItemEnchantments.EMPTY);
 		if (sourceEnchants.isEmpty()) {
 			return;
 		}
 
-		boolean bookTransfer = targetItem.isOf(Items.BOOK) && targetItem.getCount() == 1;
-		boolean itemTransfer = !targetItem.isOf(Items.BOOK) && !targetItem.isOf(Items.ENCHANTED_BOOK);
+		boolean bookTransfer = targetItem.is(Items.BOOK) && targetItem.getCount() == 1;
+		boolean itemTransfer = !targetItem.is(Items.BOOK) && !targetItem.is(Items.ENCHANTED_BOOK);
 
 		this.transferType = 0;
 		this.modifiedSource = ItemStack.EMPTY;
 		this.transferredEnchantments.clear();
 
 		if (bookTransfer) {
-			ItemEnchantmentsComponent.Builder builder = new ItemEnchantmentsComponent.Builder(ItemEnchantmentsComponent.DEFAULT);
+			ItemEnchantments.Mutable builder = new ItemEnchantments.Mutable(ItemEnchantments.EMPTY);
 			int count = 0;
-			for (var entry : sourceEnchants.getEnchantmentEntries()) {
+			for (var entry : sourceEnchants.entrySet()) {
 				if (EnchantmentShifterConfigs.limit > 0 && count >= EnchantmentShifterConfigs.limit) break;
-				builder.add(entry.getKey(), entry.getIntValue());
+				builder.upgrade(entry.getKey(), entry.getIntValue());
 				count++;
 			}
 
-			ItemStack result = Items.ENCHANTED_BOOK.getDefaultStack();
-			result.set(DataComponentTypes.STORED_ENCHANTMENTS, builder.build());
+			ItemStack result = Items.ENCHANTED_BOOK.getDefaultInstance();
+			result.set(DataComponents.STORED_ENCHANTMENTS, builder.toImmutable());
 
 			this.transferType = 1;
 			this.modifiedSource = sourceItem.copy();
 			setKeepSecondSlot(false);
-			this.repairItemUsage = 0;
-			this.levelCost.set(Math.max((int) (sourceEnchants.getSize() * EnchantmentShifterConfigs.costFactor), 1));
+			this.repairItemCountCost = 0;
+			this.cost.set(Math.max((int) (sourceEnchants.size() * EnchantmentShifterConfigs.costFactor), 1));
 			if (EnchantmentShifterConfigs.fixedCost >= 0) {
-				this.levelCost.set(EnchantmentShifterConfigs.fixedCost);
+				this.cost.set(EnchantmentShifterConfigs.fixedCost);
 			}
 
-			getOutput().setStack(0, result);
-			((ScreenHandler)(Object)this).sendContentUpdates();
+			getOutput().setItem(0, result);
+			((AbstractContainerMenu)(Object)this).broadcastChanges();
 			ci.cancel();
 			return;
 		}
 
 		if (itemTransfer) {
-			ItemEnchantmentsComponent targetEnchants = targetItem.getOrDefault(DataComponentTypes.ENCHANTMENTS, ItemEnchantmentsComponent.DEFAULT);
-			ItemEnchantmentsComponent.Builder builder = new ItemEnchantmentsComponent.Builder(targetEnchants);
-			Set<RegistryEntry<Enchantment>> transferred = new HashSet<>();
+			ItemEnchantments targetEnchants = targetItem.getOrDefault(DataComponents.ENCHANTMENTS, ItemEnchantments.EMPTY);
+			ItemEnchantments.Mutable builder = new ItemEnchantments.Mutable(targetEnchants);
+			Set<Holder<Enchantment>> transferred = new HashSet<>();
 			int transferredCount = 0;
 
-			for (var entry : sourceEnchants.getEnchantmentEntries()) {
+			for (var entry : sourceEnchants.entrySet()) {
 				if (EnchantmentShifterConfigs.limit > 0 && transferredCount >= EnchantmentShifterConfigs.limit) break;
 
-				RegistryEntry<Enchantment> enchantment = entry.getKey();
+				Holder<Enchantment> enchantment = entry.getKey();
 				int level = entry.getIntValue();
 
-				if (!enchantment.value().isAcceptableItem(targetItem)) continue;
+				if (!enchantment.value().canEnchant(targetItem)) continue;
 
 				boolean compatible = true;
-				for (var existing : targetEnchants.getEnchantmentEntries()) {
-					if (!Enchantment.canBeCombined(enchantment, existing.getKey())) {
+				for (var existing : targetEnchants.entrySet()) {
+					if (!Enchantment.areCompatible(enchantment, existing.getKey())) {
 						compatible = false;
 						break;
 					}
@@ -126,57 +126,57 @@ public abstract class AnvilLogicModifier {
 				int existingLevel = targetEnchants.getLevel(enchantment);
 				if (existingLevel > 0) {
 					if (level > existingLevel) {
-						builder.add(enchantment, level);
+						builder.upgrade(enchantment, level);
 					} else if (level == existingLevel && level < enchantment.value().getMaxLevel()) {
-						builder.add(enchantment, level + 1);
+						builder.upgrade(enchantment, level + 1);
 					}
 				} else {
-					builder.add(enchantment, level);
+					builder.upgrade(enchantment, level);
 				}
 				transferredCount++;
 			}
 
 			if (!transferred.isEmpty()) {
 				ItemStack result = targetItem.copy();
-				result.set(DataComponentTypes.ENCHANTMENTS, builder.build());
+				result.set(DataComponents.ENCHANTMENTS, builder.toImmutable());
 
 				this.transferredEnchantments = transferred;
 				this.transferType = 2;
 				this.modifiedSource = sourceItem.copy();
 				setKeepSecondSlot(false);
-				this.repairItemUsage = 0;
-				this.levelCost.set(Math.max((int) (transferred.size() * EnchantmentShifterConfigs.costFactor), 1));
+				this.repairItemCountCost = 0;
+				this.cost.set(Math.max((int) (transferred.size() * EnchantmentShifterConfigs.costFactor), 1));
 				if (EnchantmentShifterConfigs.fixedCost >= 0) {
-					this.levelCost.set(EnchantmentShifterConfigs.fixedCost);
+					this.cost.set(EnchantmentShifterConfigs.fixedCost);
 				}
 
-				getOutput().setStack(0, result);
-				((ScreenHandler)(Object)this).sendContentUpdates();
+				getOutput().setItem(0, result);
+				((AbstractContainerMenu)(Object)this).broadcastChanges();
 				ci.cancel();
 				return;
 			}
 		}
 	}
 
-	@Inject(at = @At("HEAD"), method = "onTakeOutput")
-	private void onTakeOutput(PlayerEntity player, ItemStack stack, CallbackInfo ci) {
+	@Inject(at = @At("HEAD"), method = "onTake")
+	private void onTakeOutput(Player player, ItemStack stack, CallbackInfo ci) {
 		if (this.transferType == 1 || this.transferType == 2) {
 			if (this.transferType == 1) {
-				this.modifiedSource.set(DataComponentTypes.ENCHANTMENTS, ItemEnchantmentsComponent.DEFAULT);
+				this.modifiedSource.set(DataComponents.ENCHANTMENTS, ItemEnchantments.EMPTY);
 			} else if (this.transferType == 2) {
-				ItemEnchantmentsComponent sourceEnchants = this.modifiedSource.getOrDefault(DataComponentTypes.ENCHANTMENTS, ItemEnchantmentsComponent.DEFAULT);
-				ItemEnchantmentsComponent.Builder builder = new ItemEnchantmentsComponent.Builder(ItemEnchantmentsComponent.DEFAULT);
-				for (var entry : sourceEnchants.getEnchantmentEntries()) {
+				ItemEnchantments sourceEnchants = this.modifiedSource.getOrDefault(DataComponents.ENCHANTMENTS, ItemEnchantments.EMPTY);
+				ItemEnchantments.Mutable builder = new ItemEnchantments.Mutable(ItemEnchantments.EMPTY);
+				for (var entry : sourceEnchants.entrySet()) {
 					if (!this.transferredEnchantments.contains(entry.getKey())) {
-						builder.add(entry.getKey(), entry.getIntValue());
+						builder.upgrade(entry.getKey(), entry.getIntValue());
 					}
 				}
-				this.modifiedSource.set(DataComponentTypes.ENCHANTMENTS, builder.build());
+				this.modifiedSource.set(DataComponents.ENCHANTMENTS, builder.toImmutable());
 			}
 
 			if (EnchantmentShifterConfigs.returnItem == 1) {
-				getInput().getStack(0).setCount(0);
-				player.giveItemStack(this.modifiedSource);
+				getInput().getItem(0).setCount(0);
+				player.addItem(this.modifiedSource);
 			}
 		}
 	}
